@@ -1,56 +1,52 @@
-/bin/env python
+#!/usr/bin/env python
 
-import os
-import sys
 import getopt
-#import re
-import telnetlib 
-
-def do_telnet(Host, username, password, finish, commands):
-    tn = telnetlib.Telnet(Host, port=23, timeout=10)
-#	tn.set_debuglevel(2)
-     
-    tn.read_until('login: ')
-    tn.write(username + '\n')
-    
-    tn.read_until('password: ')
-    tn.write(password + '\n')
-      
-    tn.read_until(finish)
-    for command in commands:
-        tn.write('%s\n' % command)
-    
-    tn.read_until(finish)
-    tn.close()
+import sys
+import time
+from mymodule.telnetclient import TelnetClient
 
 
 def usage():
-    	print ('reset_clipon.py <-h> <NE> <shelf> <slot> <type>')
+    print('reset_clipon.py [-v] <NE> <shelf> [times]')
+    sys.exit(1)
 
-try:
-    opts,args = getopt.getopt(sys.argv[1:],"h", ["help"])
-    for opt,arg in opts:  
-    	if opt in ("-h", "--help"):  
-        	usage();  
-          	sys.exit(1); 
-    
+
+if __name__ == '__main__':
+    if len(sys.argv) < 3:
+        usage()
+    try:
+        opts, args = getopt.getopt(sys.argv[1:], "v", ["verbose"])
+    except getopt.GetoptError:
+        sys.exit()
+
+    verbose = False
+    for opt, arg in opts:
+        if opt in ("-v", "--verbose"):
+            verbose = True
+
     ne = args[0]
     shelf = int(args[1])
-    slot = int(args[2])
+    times = int(5)
 
-    print ne, shelf, slot
+    if shelf > 8:
+        print('invalid sh{}'.format(shelf))
+        sys.exit(1)
 
-    username = 'root'
-    password = 'ALu12#'
-    finish = ':~$ '
-    commands = ['cd /pureNeApp/EC']
+    if len(args) > 2:
+        times = int(args[2])
+        if times > 500:
+            print('too many times[{}]'.format(times))
+            sys.exit(1)
 
-    do_telnet(ne, username, password, finish, commands)
+#    print ne, shelf, slot
 
+    reset_cmd = '/pureNeApp/EC/screen -S console -X stuff "clipon agt shelf reset ' + str(shelf) +' appl \n"'
+    te = TelnetClient(ne, 23, "root", "ALu12#", verbose)
+    for i in range(1, times):
+        te.execute_some_command(reset_cmd)
+        time.sleep(20)
+        i = i + 1
 
+    te.logout()
 
-except getopt.GetoptError:
-	sys.exit()
-
-    
 
